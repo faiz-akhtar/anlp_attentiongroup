@@ -1,0 +1,55 @@
+==================================================
+STRATIFIED SAMPLING SUMMARY
+==================================================
+Loaded a total of 59224 samples.
+
+Final Label distribution:
+label
+0     9090
+10    9090
+2     6795
+8     6560
+7     6109
+6     5783
+9     4608
+1     3965
+3     3029
+4     2227
+5     1968
+Name: count, dtype: int64
+
+Final Generator distribution (within each label):
+label  generator
+0      Human                                       9090
+1      deepseek-ai/DeepSeek-V3-0324                3030
+       deepseek-ai/deepseek-coder-1.3b-base         517
+       deepseek-ai/DeepSeek-R1                      418
+2      Qwen/Qwen2.5-Coder-1.5B-Instruct            1818
+       Qwen/Qwen2.5-Coder-1.5B                     1670
+       Qwen/Qwen2.5-72B-Instruct                   1539
+       Qwen/Qwen2.5-Codder-14B-Instruct            1415
+       Qwen/QwQ-32B                                 353
+3      01-ai/Yi-Coder-1.5B-Chat                    2766
+       01-ai/Yi-Coder-1.5B                          263
+4      bigcode/starcoder                            923
+       bigcode/starcoder2-15b                       887
+       bigcode/starcoder2-3b                        417
+5      gemma-3-27b-it                              1157
+       gemma-3n-e4b-it                              623
+       google/codegemma-2b                          188
+6      microsoft/Phi-3-small-8k-instruct           2040
+       microsoft/Phi-3-medium-4k-instruct          1987
+       microsoft/Phi-3-mini-4k-instruct            1756
+7      meta-llama/Llama-3.1-8B-Instruct            1818
+       meta-llama/Llama-3.2-11B-Vision-Instruct    1586
+       meta-llama/Llama-3.2-3B                     1253
+       meta-llama/Llama-3.1-8B                     1178
+       meta-llama/Llama-3.2-1B                      274
+8      ibm-granite/granite-3.2-2b-instruct         3030
+       ibm-granite/granite-3.3-8b-instruct         2239
+       ibm-granite/granite-3.3-8b-base             1291
+9      mistralai/Mistral-7B-Instruct-v0.3          2769
+       mistralai/Devstral-Small-2505               1839
+10     GPT-4o                                      9090
+Name: count, dtype: int64
+==================================================

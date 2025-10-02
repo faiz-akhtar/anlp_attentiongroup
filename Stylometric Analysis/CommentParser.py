@@ -42,12 +42,22 @@ class CommentParser:
                 'multi': r'/\*[\s\S]*?\*/',
                 'docstring': r'/\*\*[\s\S]*?\*/'
             },
+            'c++': {
+                'single': r'//.*?$',
+                'multi': r'/\*[\s\S]*?\*/',
+                'docstring': r'/\*\*[\s\S]*?\*/'
+            },
             'c': {
                 'single': r'//.*?$',
                 'multi': r'/\*[\s\S]*?\*/',
                 'docstring': r'/\*\*[\s\S]*?\*/'
             },
             'csharp': {
+                'single': r'//.*?$',
+                'multi': r'/\*[\s\S]*?\*/',
+                'docstring': r'///.*?$|/\*\*[\s\S]*?\*/'
+            },
+            'c#': {
                 'single': r'//.*?$',
                 'multi': r'/\*[\s\S]*?\*/',
                 'docstring': r'///.*?$|/\*\*[\s\S]*?\*/'
