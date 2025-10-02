@@ -13,6 +13,9 @@ import seaborn as sns
 from typing import Dict, List, Tuple, Any
 import os
 import warnings
+import argparse
+from io import StringIO
+
 warnings.filterwarnings('ignore')
 
 # Import feature extractors
@@ -21,6 +24,10 @@ from FeatureExtractor import FeatureExtractor
 from FormattingMicroSignatureExtractor import FormattingMicroSignatureExtractor
 from CommentParser import CommentFeatureProcessor
 from VariableNamingEntropyExtractor import VariableNamingEntropyExtractor
+
+# Global constants for data paths
+data_path_a = '../SemEval-2026-Task13/task_a/task_a_training_set_1.parquet'
+data_path_b = '../SemEval-2026-Task13/task_b/task_b_training_set.parquet'
 
 
 class LLMDetectionPipeline:
@@ -66,78 +73,72 @@ class LLMDetectionPipeline:
         
         print(f"Using device: {self.device}")
     
-    def load_stratified_sample(self, n_samples: int) -> pd.DataFrame:
+    def load_proportional_sample(self, n_samples: int, output_dir: str) -> pd.DataFrame:
         """
-        Load a stratified sample from the dataset.
-        This stratification ensures that each label has an equal number of samples.
-        Within each label, the samples are drawn equally from the available generators.
+        Load a proportionally stratified sample from the dataset.
+        This stratification ensures that each [label, generator] combination
+        is represented in the sample in proportion to its presence in the full dataset.
+        If n_samples is -1, the entire dataset is used.
         
         Args:
-            n_samples: Total number of samples to load
+            n_samples: Total number of samples to load. -1 for the full dataset.
+            output_dir: Directory to save sampling statistics.
             
         Returns:
-            Stratified sample DataFrame
+            Proportionally stratified sample DataFrame
         """
-        print(f"Loading stratified sample of approximately {n_samples} samples...")
-        
-        # Read the full dataset to get metadata
+        print("Loading full dataset for sampling...")
         df = pd.read_parquet(self.data_path)
         
-        unique_labels = df['label'].unique()
-        n_labels = len(unique_labels)
-        
-        if n_labels == 0:
-            print("No labels found in the dataset.")
-            return pd.DataFrame()
+        if n_samples == -1 or n_samples >= len(df):
+            print(f"Using the entire dataset of {len(df)} samples.")
+            df_sample = df
+        else:
+            print(f"Loading proportional sample of {n_samples} samples from {len(df)} total...")
             
-        samples_per_label = n_samples // n_labels
-        print(f"Targeting {samples_per_label} samples per label.")
-        
-        sampled_dfs = []
-        
-        for label in unique_labels:
-            print(f"\nProcessing label: '{label}'")
-            df_label = df[df['label'] == label]
+            # Create a combined column for stratification
+            df['stratify_col'] = df['label'].astype(str) + '_' + df['generator'].astype(str)
             
-            unique_generators = df_label['generator'].unique()
-            n_generators = len(unique_generators)
-            
-            if n_generators == 0:
-                print(f"  - No generators found for label '{label}'. Skipping.")
-                continue
-                
-            samples_per_generator = samples_per_label // n_generators
-            print(f"  - Found {n_generators} generator(s): {unique_generators}")
-            print(f"  - Targeting {samples_per_generator} samples per generator.")
-
-            # Group by generator within the current label and sample from each group
-            label_sample_df = df_label.groupby('generator', group_keys=False).apply(
-                lambda x: x.sample(
-                    n=min(len(x), samples_per_generator),
-                    random_state=self.random_state
-                )
+            # Use train_test_split to get a stratified sample
+            # We only care about the 'train' part of the split, which is our sample.
+            df_sample, _ = train_test_split(
+                df,
+                train_size=n_samples,
+                stratify=df['stratify_col'],
+                random_state=self.random_state
             )
-            sampled_dfs.append(label_sample_df)
-        
-        if not sampled_dfs:
-            print("Could not sample any data.")
-            return pd.DataFrame()
-            
-        # Combine all the sampled dataframes
-        df_sample = pd.concat(sampled_dfs).reset_index(drop=True)
-        
-        # Shuffle the final dataframe to mix labels and generators
+            df_sample = df_sample.drop(columns=['stratify_col'])
+
         df_sample = df_sample.sample(frac=1, random_state=self.random_state).reset_index(drop=True)
+
+        # Prepare summary for printing and saving
+        summary_buffer = StringIO()
+        summary_buffer.write("="*50 + "\n")
+        summary_buffer.write("PROPORTIONAL SAMPLING SUMMARY\n")
+        summary_buffer.write("="*50 + "\n")
+        summary_buffer.write(f"Loaded a total of {len(df_sample)} samples.\n")
         
-        print("\n" + "="*50)
-        print("STRATIFIED SAMPLING SUMMARY")
-        print("="*50)
-        print(f"Loaded a total of {len(df_sample)} samples.")
-        print("\nFinal Label distribution:")
-        print(df_sample['label'].value_counts())
-        print("\nFinal Generator distribution (within each label):")
-        print(df_sample.groupby('label')['generator'].value_counts())
-        print("="*50 + "\n")
+        summary_buffer.write("\n--- Full Dataset Distribution ---\n")
+        summary_buffer.write("Label distribution:\n")
+        summary_buffer.write(df['label'].value_counts(normalize=True).to_string() + "\n\n")
+        summary_buffer.write("[Label, Generator] distribution:\n")
+        summary_buffer.write(df.groupby('label')['generator'].value_counts(normalize=True).to_string() + "\n")
+        
+        summary_buffer.write("\n--- Sampled Dataset Distribution ---\n")
+        summary_buffer.write("Label distribution:\n")
+        summary_buffer.write(df_sample['label'].value_counts(normalize=True).to_string() + "\n\n")
+        summary_buffer.write("[Label, Generator] distribution:\n")
+        summary_buffer.write(df_sample.groupby('label')['generator'].value_counts(normalize=True).to_string() + "\n")
+        summary_buffer.write("="*50 + "\n")
+
+        summary_text = summary_buffer.getvalue()
+        print(summary_text)
+
+        # Save summary to file
+        stats_path = os.path.join(output_dir, 'sampling_stats.txt')
+        with open(stats_path, 'w') as f:
+            f.write(summary_text)
+        print(f"Sampling statistics saved to {stats_path}")
         
         return df_sample
     
@@ -215,35 +216,86 @@ class LLMDetectionPipeline:
         return features_df
     
     def split_data(self, df: pd.DataFrame, test_size: float = 0.2) -> Tuple:
-        """
-        Split data into train and validation sets.
-        
-        Args:
-            df: Features DataFrame
-            test_size: Proportion of data for validation
+            """
+            Split data into train and validation sets, stratified by [label, generator].
+            Handles cases where some strata have only one member by adding them to the training set.
             
-        Returns:
-            X_train, X_val, y_train, y_val
-        """
-        print(f"Splitting data (test_size={test_size})...")
-        
-        # Separate features and labels
-        feature_cols = [col for col in df.columns 
-                       if col not in ['label', 'generator', 'language']]
-        X = df[feature_cols].values
-        y = df['label'].values
-        
-        # Stratified split
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=test_size, 
-            stratify=y, random_state=self.random_state
-        )
-        
-        print(f"Train set: {X_train.shape}, Val set: {X_val.shape}")
-        print(f"Train label distribution: {np.bincount(y_train)}")
-        print(f"Val label distribution: {np.bincount(y_val)}")
-        
-        return X_train, X_val, y_train, y_val
+            Args:
+                df: Features DataFrame
+                test_size: Proportion of data for validation
+                
+            Returns:
+                X_train, X_val, y_train, y_val
+            """
+            print(f"Splitting data (test_size={test_size}) with proportional stratification...")
+            
+            # Create a combined column for stratification
+            df['stratify_col'] = df['label'].astype(str) + '_' + df['generator'].astype(str)
+            
+            # Identify strata counts
+            strata_counts = df['stratify_col'].value_counts()
+            
+            # Identify strata with only one member
+            single_member_strata = strata_counts[strata_counts == 1].index
+            
+            if len(single_member_strata) > 0:
+                print(f"Found {len(single_member_strata)} strata with only 1 member each. "
+                    f"These {len(single_member_strata)} samples will be added exclusively to the training set.")
+
+            # Separate stratifiable data from single-member data
+            df_stratifiable = df[~df['stratify_col'].isin(single_member_strata)]
+            df_single_member = df[df['stratify_col'].isin(single_member_strata)]
+            
+            # Define feature columns
+            feature_cols = [col for col in df.columns 
+                        if col not in ['label', 'generator', 'language', 'stratify_col']]
+            
+            # Handle the stratifiable part
+            if not df_stratifiable.empty:
+                X_strat = df_stratifiable[feature_cols].values
+                y_strat = df_stratifiable['label'].values
+                stratify_col_strat = df_stratifiable['stratify_col']
+
+                X_train, X_val, y_train, y_val = train_test_split(
+                    X_strat, y_strat,
+                    test_size=test_size, 
+                    stratify=stratify_col_strat, 
+                    random_state=self.random_state
+                )
+            else:
+                # If no data is stratifiable, initialize empty sets for validation
+                # and put everything into the single-member pool
+                X_train, X_val, y_train, y_val = (
+                    np.array([]).reshape(0, len(feature_cols)), 
+                    np.array([]).reshape(0, len(feature_cols)), 
+                    np.array([], dtype=int), 
+                    np.array([], dtype=int)
+                )
+                df_single_member = df # All data is single-member strata
+                print("Warning: No strata have more than 1 member. Cannot create a validation set. All data will be used for training.")
+
+            # Handle the single-member part by adding it to the training set
+            if not df_single_member.empty:
+                X_single = df_single_member[feature_cols].values
+                y_single = df_single_member['label'].values
+                
+                # Concatenate with the training set
+                if X_train.size > 0:
+                    X_train = np.vstack([X_train, X_single])
+                    y_train = np.concatenate([y_train, y_single])
+                else:
+                    X_train = X_single
+                    y_train = y_single
+                    
+            print(f"Train set: {X_train.shape}, Val set: {X_val.shape}")
+            if y_train.size > 0:
+                print(f"Train label distribution: {np.bincount(y_train)}")
+            if y_val.size > 0:
+                print(f"Val label distribution: {np.bincount(y_val)}")
+            else:
+                print("Validation set is empty.")
+                
+            return X_train, X_val, y_train, y_val
     
     def apply_pca(self, X_train: np.ndarray, X_val: np.ndarray, 
                   explained_variance: float = 0.95) -> Tuple:
@@ -343,24 +395,23 @@ class LLMDetectionPipeline:
     
     def train_model(self, X_train: np.ndarray, y_train: np.ndarray,
                    X_val: np.ndarray, y_val: np.ndarray,
-                   epochs: int = 100, lr: float = 0.001,
-                   patience: int = 10, checkpoint_path: str = 'best_model.pth') -> Dict:
+                   epochs: int, lr: float, patience: int, 
+                   output_dir: str) -> Dict:
         """
         Train the model with early stopping based on validation accuracy.
         
         Args:
-            X_train: Training features
-            y_train: Training labels
-            X_val: Validation features
-            y_val: Validation labels
+            X_train, y_train: Training data
+            X_val, y_val: Validation data
             epochs: Maximum number of epochs
             lr: Learning rate
             patience: Early stopping patience
-            checkpoint_path: Path to save best model
+            output_dir: Directory to save the best model checkpoint
             
         Returns:
             Training history dictionary
         """
+        checkpoint_path = os.path.join(output_dir, 'best_model.pth')
         print(f"Training model for up to {epochs} epochs...")
         
         # Determine number of classes
@@ -387,29 +438,19 @@ class LLMDetectionPipeline:
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
-        # MODIFIED: Scheduler now monitors validation accuracy
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )
         
         # Training history
-        history = {
-            'train_loss': [],
-            'val_loss': [],
-            'train_acc': [],
-            'val_acc': []
-        }
+        history = { 'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': [] }
         
-        # MODIFIED: Track best validation accuracy instead of loss
         best_val_acc = 0.0
         patience_counter = 0
         
         for epoch in range(epochs):
-            # Training phase
             self.model.train()
-            train_loss = 0
-            train_correct = 0
-            train_total = 0
+            train_loss, train_correct, train_total = 0, 0, 0
             
             for batch_X, batch_y in train_loader:
                 batch_X, batch_y = batch_X.to(self.device), batch_y.to(self.device)
@@ -428,11 +469,8 @@ class LLMDetectionPipeline:
             avg_train_loss = train_loss / len(train_loader)
             train_accuracy = 100 * train_correct / train_total
             
-            # Validation phase
             self.model.eval()
-            val_loss = 0
-            val_correct = 0
-            val_total = 0
+            val_loss, val_correct, val_total = 0, 0, 0
             
             with torch.no_grad():
                 for batch_X, batch_y in val_loader:
@@ -449,20 +487,17 @@ class LLMDetectionPipeline:
             avg_val_loss = val_loss / len(val_loader)
             val_accuracy = 100 * val_correct / val_total
             
-            # Update history
             history['train_loss'].append(avg_train_loss)
             history['val_loss'].append(avg_val_loss)
             history['train_acc'].append(train_accuracy)
             history['val_acc'].append(val_accuracy)
             
-            # MODIFIED: Learning rate scheduling based on validation accuracy
             scheduler.step(val_accuracy)
             
             print(f"Epoch [{epoch+1}/{epochs}] "
                   f"Train Loss: {avg_train_loss:.4f} | Train Acc: {train_accuracy:.2f}% | "
                   f"Val Loss: {avg_val_loss:.4f} | Val Acc: {val_accuracy:.2f}%")
             
-            # MODIFIED: Early stopping and checkpointing based on validation accuracy
             if val_accuracy > best_val_acc:
                 best_val_acc = val_accuracy
                 patience_counter = 0
@@ -473,7 +508,7 @@ class LLMDetectionPipeline:
                     'val_loss': avg_val_loss,
                     'val_acc': val_accuracy
                 }, checkpoint_path)
-                print(f"Model checkpoint saved (val_acc: {val_accuracy:.2f}%)")
+                print(f"Model checkpoint saved to {checkpoint_path} (val_acc: {val_accuracy:.2f}%)")
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -483,17 +518,17 @@ class LLMDetectionPipeline:
         print("\nTraining complete!")
         return history
     
-    def plot_training_history(self, history: Dict, save_path: str = 'training_plot.png'):
+    def plot_training_history(self, history: Dict, output_dir: str):
         """
         Plot training and validation loss/accuracy.
         
         Args:
             history: Training history dictionary
-            save_path: Path to save plot
+            output_dir: Directory to save the plot
         """
+        save_path = os.path.join(output_dir, 'training_plot.png')
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
         
-        # Loss plot
         ax1.plot(history['train_loss'], label='Train Loss', linewidth=2)
         ax1.plot(history['val_loss'], label='Val Loss', linewidth=2)
         ax1.set_xlabel('Epoch', fontsize=12)
@@ -502,7 +537,6 @@ class LLMDetectionPipeline:
         ax1.legend(fontsize=10)
         ax1.grid(True, alpha=0.3)
         
-        # Accuracy plot
         ax2.plot(history['train_acc'], label='Train Accuracy', linewidth=2)
         ax2.plot(history['val_acc'], label='Val Accuracy', linewidth=2)
         ax2.set_xlabel('Epoch', fontsize=12)
@@ -517,71 +551,67 @@ class LLMDetectionPipeline:
         plt.close()
     
     def evaluate_model(self, X_val: np.ndarray, y_val: np.ndarray, 
-                      checkpoint_path: str = 'best_model.pth') -> Dict:
+                      output_dir: str) -> Dict:
         """
-        Evaluate the model on validation set.
+        Evaluate the model on validation set and save results.
         
         Args:
-            X_val: Validation features
-            y_val: Validation labels
-            checkpoint_path: Path to best model checkpoint
+            X_val, y_val: Validation data
+            output_dir: Directory to load model and save results
             
         Returns:
             Dictionary with evaluation metrics
         """
-        print("Evaluating model on validation set...")
+        checkpoint_path = os.path.join(output_dir, 'best_model.pth')
+        print(f"Evaluating model on validation set using checkpoint: {checkpoint_path}")
         
-        # Load best checkpoint
         checkpoint = torch.load(checkpoint_path)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
         
-        # Predict
         val_dataset = TensorDataset(torch.FloatTensor(X_val), torch.LongTensor(y_val))
-        val_loader = DataLoader(val_dataset, batch_size=self.batch_size, 
-                               shuffle=False, num_workers=0)
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
         
-        all_preds = []
-        all_labels = []
-        
+        all_preds, all_labels = [], []
         with torch.no_grad():
             for batch_X, batch_y in val_loader:
-                batch_X = batch_X.to(self.device)
-                outputs = self.model(batch_X)
+                outputs = self.model(batch_X.to(self.device))
                 _, predicted = torch.max(outputs.data, 1)
                 all_preds.extend(predicted.cpu().numpy())
                 all_labels.extend(batch_y.numpy())
         
-        all_preds = np.array(all_preds)
-        all_labels = np.array(all_labels)
+        all_preds, all_labels = np.array(all_preds), np.array(all_labels)
         
-        # Calculate metrics
         accuracy = accuracy_score(all_labels, all_preds)
         precision = precision_score(all_labels, all_preds, average='weighted', zero_division=0)
         recall = recall_score(all_labels, all_preds, average='weighted', zero_division=0)
         f1 = f1_score(all_labels, all_preds, average='weighted', zero_division=0)
         
-        metrics = {
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1_score': f1
-        }
+        metrics = {'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1_score': f1}
         
-        print("\n" + "="*50)
-        print("EVALUATION METRICS")
-        print("="*50)
-        print(f"Accuracy:  {accuracy:.4f}")
-        print(f"Precision: {precision:.4f}")
-        print(f"Recall:    {recall:.4f}")
-        print(f"F1 Score:  {f1:.4f}")
-        print("="*50)
+        # Prepare evaluation report
+        report_buffer = StringIO()
+        report_buffer.write("="*50 + "\nEVALUATION METRICS\n" + "="*50 + "\n")
+        report_buffer.write(f"Accuracy:  {accuracy:.4f}\n")
+        report_buffer.write(f"Precision: {precision:.4f}\n")
+        report_buffer.write(f"Recall:    {recall:.4f}\n")
+        report_buffer.write(f"F1 Score:  {f1:.4f}\n" + "="*50 + "\n")
         
-        # Detailed classification report
-        print("\nDetailed Classification Report:")
-        print(classification_report(all_labels, all_preds, zero_division=0))
+        report_buffer.write("\nDetailed Classification Report:\n")
+        class_report = classification_report(all_labels, all_preds, zero_division=0)
+        report_buffer.write(class_report + "\n")
+        
+        report_text = report_buffer.getvalue()
+        print(report_text)
+        
+        # Save evaluation report
+        report_path = os.path.join(output_dir, 'evaluation_report.txt')
+        with open(report_path, 'w') as f:
+            f.write(report_text)
+        print(f"Evaluation report saved to {report_path}")
         
         # Confusion matrix
+        cm_path = os.path.join(output_dir, 'confusion_matrix.png')
         cm = confusion_matrix(all_labels, all_preds)
         plt.figure(figsize=(10, 8))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
@@ -589,8 +619,8 @@ class LLMDetectionPipeline:
         plt.ylabel('True Label', fontsize=12)
         plt.xlabel('Predicted Label', fontsize=12)
         plt.tight_layout()
-        plt.savefig('confusion_matrix.png', dpi=300, bbox_inches='tight')
-        print("Confusion matrix saved to confusion_matrix.png")
+        plt.savefig(cm_path, dpi=300, bbox_inches='tight')
+        print(f"Confusion matrix saved to {cm_path}")
         plt.close()
         
         return metrics
@@ -598,25 +628,40 @@ class LLMDetectionPipeline:
 
 def main():
     """
-    Main execution function with configurable parameters.
+    Main execution function with configurable parameters from command line.
     """
-    # Configuration
+    parser = argparse.ArgumentParser(description="LLM Code Detection Pipeline")
+    parser.add_argument('--task', type=str, required=True, choices=['a', 'b'],
+                        help="Task to run ('a' or 'b')")
+    parser.add_argument('--n_samples', type=int, default=100000,
+                        help="Number of samples to use. -1 for the entire dataset.")
+    args = parser.parse_args()
+
+    # --- Configuration ---
+    data_path = data_path_a if args.task == 'a' else data_path_b
+    n_samples_str = "full" if args.n_samples == -1 else str(args.n_samples)
+    output_dir = f"{n_samples_str}_task_{args.task}"
+    
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"All outputs will be saved to: {output_dir}")
+
     CONFIG = {
-        'data_path': '../SemEval-2026-Task13/task_b/task_b_training_set.parquet',
-        'n_samples': 100000,  # Number of samples to use (increase as needed)
-        'test_size': 0.2,    # Train/val split ratio
-        'explained_variance': 0.95,  # PCA variance threshold
+        'data_path': data_path,
+        'n_samples': args.n_samples,
+        'output_dir': output_dir,
+        'test_size': 0.2,
+        'explained_variance': 0.95,
         'epochs': 100,
         'learning_rate': 0.001,
-        'patience': 10,
-        'batch_size': 256,
-        'feature_batch_size': 100,
+        'patience': 20,
+        'batch_size': 1024,
+        'feature_batch_size': 10000,
         'pca_batch_size': 5000,
         'hidden_dims': [256, 128, 64],
         'random_state': 42
     }
     
-    # Initialize pipeline
+    # --- Pipeline Execution ---
     pipeline = LLMDetectionPipeline(
         data_path=CONFIG['data_path'],
         batch_size=CONFIG['batch_size'],
@@ -625,8 +670,8 @@ def main():
         random_state=CONFIG['random_state']
     )
     
-    # 1. Load stratified sample
-    df = pipeline.load_stratified_sample(CONFIG['n_samples'])
+    # 1. Load proportional sample
+    df = pipeline.load_proportional_sample(CONFIG['n_samples'], CONFIG['output_dir'])
     
     # 2. Extract features
     features_df = pipeline.extract_features_batch(df)
@@ -646,21 +691,20 @@ def main():
         X_train_pca, y_train, X_val_pca, y_val,
         epochs=CONFIG['epochs'],
         lr=CONFIG['learning_rate'],
-        patience=CONFIG['patience']
+        patience=CONFIG['patience'],
+        output_dir=CONFIG['output_dir']
     )
     
     # 6. Plot training history
-    pipeline.plot_training_history(history)
+    pipeline.plot_training_history(history, CONFIG['output_dir'])
     
     # 7. Evaluate model
-    metrics = pipeline.evaluate_model(X_val_pca, y_val)
+    metrics = pipeline.evaluate_model(X_val_pca, y_val, CONFIG['output_dir'])
     
     print("\n" + "="*50)
     print("PIPELINE EXECUTION COMPLETE")
     print("="*50)
-    print(f"Best model saved to: best_model.pth")
-    print(f"Training plot saved to: training_plot.png")
-    print(f"Confusion matrix saved to: confusion_matrix.png")
+    print(f"All artifacts saved in directory: {CONFIG['output_dir']}")
 
 
 if __name__ == "__main__":
