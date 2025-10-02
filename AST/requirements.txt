@@ -1,0 +1,14 @@
+numpy>=1.21.0
+datasets>=2.10.0
+tree-sitter==0.21.1
+pandas>=1.4.0
+typing>=3.7.4
+logging
+pathlib>=1.0.1
+argparse>=1.4.0
+tree-sitter-languages==1.10.2
+torch 
+torch-geometric 
+scikit-learn 
+tqdm 
+wandb
