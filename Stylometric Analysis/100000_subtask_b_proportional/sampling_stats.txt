@@ -1,0 +1,107 @@
+======================================================================
+SUBTASK B - SAMPLING SUMMARY (PROPORTIONAL STRATEGY)
+======================================================================
+Training samples: 100000 (from 500000 available)
+Validation samples: 20000 (from 100000 available)
+
+--- Sampled Training Dataset Distribution ---
+Label distribution:
+label
+0     0.88421
+10    0.02162
+2     0.01798
+7     0.01639
+8     0.01626
+6     0.01157
+9     0.00923
+1     0.00832
+3     0.00604
+4     0.00445
+5     0.00393
+
+[Label, Language] distribution:
+label  language  
+0      Java          0.280205
+       Python        0.263636
+       C#            0.127956
+       JavaScript    0.079042
+       C++           0.070153
+       PHP           0.064611
+       Go            0.060789
+       C             0.053607
+1      Java          0.252404
+       Python        0.212740
+       JavaScript    0.141827
+       C#            0.131010
+       C             0.069712
+       C++           0.069712
+       Go            0.061298
+       PHP           0.061298
+2      Python        0.359844
+       Java          0.217464
+       JavaScript    0.136819
+       C++           0.120690
+       C#            0.095662
+       Go            0.038376
+       C             0.027253
+       PHP           0.003893
+3      Python        0.463576
+       Java          0.195364
+       JavaScript    0.120861
+       C++           0.084437
+       C#            0.079470
+       Go            0.029801
+       C             0.026490
+4      Python        0.811236
+       C++           0.101124
+       Java          0.053933
+       JavaScript    0.015730
+       C#            0.011236
+       Go            0.004494
+       C             0.002247
+5      Java          0.218830
+       Python        0.193384
+       JavaScript    0.150127
+       C#            0.117048
+       C++           0.091603
+       C             0.083969
+       PHP           0.081425
+       Go            0.063613
+6      Python        0.552290
+       Java          0.143475
+       C++           0.121003
+       JavaScript    0.076923
+       C#            0.057044
+       Go            0.031115
+       C             0.018150
+7      Python        0.466748
+       Java          0.178768
+       C++           0.107993
+       JavaScript    0.104942
+       C#            0.078707
+       Go            0.031117
+       C             0.026846
+       PHP           0.004881
+8      Java          0.343788
+       Python        0.268143
+       C#            0.146371
+       Go            0.068881
+       C             0.064576
+       C++           0.057811
+       JavaScript    0.050431
+9      Java          0.277356
+       Python        0.218852
+       C#            0.137595
+       JavaScript    0.115926
+       C++           0.079090
+       C             0.072589
+       Go            0.068256
+       PHP           0.030336
+10     Java          0.248381
+       Python        0.207678
+       JavaScript    0.191489
+       C#            0.139685
+       C++           0.102683
+       Go            0.062442
+       C             0.047641
+

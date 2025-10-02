@@ -1,0 +1,35 @@
+======================================================================
+TEST SET EVALUATION - SUBTASK A
+======================================================================
+
+SUMMARY METRICS
+----------------------------------------------------------------------
+Accuracy:           0.3240
+
+F1 SCORES:
+  F1 Micro:         0.3240
+  F1 Macro:         0.3157
+  F1 Weighted:      0.2740
+
+PRECISION SCORES:
+  Precision Micro:  0.3240
+  Precision Macro:  0.5958
+  Precision Weighted: 0.7903
+
+RECALL SCORES:
+  Recall Micro:     0.3240
+  Recall Macro:     0.5554
+  Recall Weighted:  0.3240
+======================================================================
+
+DETAILED CLASSIFICATION REPORT
+----------------------------------------------------------------------
+              precision    recall  f1-score   support
+
+           0       0.95      0.14      0.24       777
+           1       0.24      0.97      0.39       223
+
+    accuracy                           0.32      1000
+   macro avg       0.60      0.56      0.32      1000
+weighted avg       0.79      0.32      0.27      1000
+

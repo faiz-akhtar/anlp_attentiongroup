@@ -1,0 +1,19 @@
+==================================================
+VALIDATION EVALUATION METRICS
+==================================================
+Accuracy:  0.9635
+Precision: 0.9637
+Recall:    0.9635
+F1 Score:  0.9635
+==================================================
+
+Detailed Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.95      0.97      0.96       954
+           1       0.97      0.96      0.96      1045
+
+    accuracy                           0.96      1999
+   macro avg       0.96      0.96      0.96      1999
+weighted avg       0.96      0.96      0.96      1999
+

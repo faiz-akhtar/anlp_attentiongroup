@@ -1,0 +1,11 @@
+Metric,Score
+Accuracy,0.49
+F1_Micro,0.49
+F1_Macro,0.19641212777043313
+F1_Weighted,0.5085732228260857
+Precision_Micro,0.49
+Precision_Macro,0.2057535417861263
+Precision_Weighted,0.5378381389442021
+Recall_Micro,0.49
+Recall_Macro,0.20695915544783175
+Recall_Weighted,0.49
