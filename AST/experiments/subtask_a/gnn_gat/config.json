@@ -11,13 +11,14 @@
     "pooling": "mean"
   },
   "training": {
-    "epochs": 20,
+    "epochs": 6,
+    "chunk_size": 512,
     "batch_size": 32,
     "num_workers": 4,
     "augment_train": true,
     "patience": 20,
     "grad_clip": 1.0,
-    "save_every": 5
+    "save_every": 2
   },
   "optimizer": {
     "type": "adamw",
