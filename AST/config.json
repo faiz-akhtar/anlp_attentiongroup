@@ -10,8 +10,9 @@
         "pooling": "mean"
     },
     "training": {
-        "epochs": 20,
+        "epochs": 10,
         "batch_size": 32,
+        "chunk_size": 512,
         "num_workers": 4,
         "augment_train": true,
         "patience": 20,
