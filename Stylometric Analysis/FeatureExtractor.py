@@ -76,7 +76,8 @@ def python_tokenizer(code):
         for tok in tokenize.generate_tokens(io.StringIO(code).readline):
             if tok.type not in [tokenize.COMMENT, tokenize.NL, tokenize.NEWLINE, tokenize.ENCODING]:
                 tokens.append(tok.string)
-    except tokenize.TokenError:
+    # --- FIX: Added IndentationError to the except block ---
+    except (tokenize.TokenError, IndentationError):
         # Fallback for syntactically incorrect code
         return general_tokenizer(code, 'python')
     return tokens
@@ -106,7 +107,7 @@ class FeatureExtractor:
         features = {}
         features.update(self.get_frequency_patterns())
         features.update(self.get_formatting_signatures())
-        features.update(self.get_sequential_patterns())
+        # features.update(self.get_sequential_patterns())
         features.update(self.get_choice_patterns())
         return features
 

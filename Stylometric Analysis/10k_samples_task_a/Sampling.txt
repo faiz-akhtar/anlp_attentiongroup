@@ -1,0 +1,48 @@
+==================================================
+STRATIFIED SAMPLING SUMMARY
+==================================================
+Loaded a total of 9998 samples.
+
+Final Label distribution:
+label
+0    5000
+1    4998
+Name: count, dtype: int64
+
+Final Generator distribution (within each label):
+label  generator
+0      human                                       5000
+1      01-ai/Yi-Coder-1.5B                          147
+       01-ai/Yi-Coder-1.5B-Chat                     147
+       01-ai/Yi-Coder-9B                            147
+       01-ai/Yi-Coder-9B-Chat                       147
+       Qwen/Qwen2.5-Coder-1.5B                      147
+       Qwen/Qwen2.5-Coder-1.5B-Instruct             147
+       Qwen/Qwen2.5-Coder-32B-Instruct              147
+       Qwen/Qwen2.5-Coder-7B                        147
+       Qwen/Qwen2.5-Coder-7B-Instruct               147
+       bigcode/starcoder                            147
+       bigcode/starcoder2-15b                       147
+       bigcode/starcoder2-3b                        147
+       bigcode/starcoder2-7b                        147
+       codellama/CodeLlama-34b-Instruct-hf          147
+       codellama/CodeLlama-70b-Instruct-hf          147
+       codellama/CodeLlama-7b-hf                    147
+       deepseek-ai/deepseek-coder-1.3b-base         147
+       deepseek-ai/deepseek-coder-1.3b-instruct     147
+       deepseek-ai/deepseek-coder-6.7b-base         147
+       deepseek-ai/deepseek-coder-6.7b-instruct     147
+       google/codegemma-2b                          147
+       google/codegemma-7b                          147
+       ibm-granite/granite-8b-code-base-4k          147
+       ibm-granite/granite-8b-code-instruct-4k      147
+       meta-llama/Llama-3.1-8B                      147
+       meta-llama/Llama-3.1-8B-Instruct             147
+       meta-llama/Llama-3.2-1B                      147
+       meta-llama/Llama-3.2-3B                      147
+       meta-llama/Llama-3.3-70B-Instruct            147
+       microsoft/Phi-3-medium-4k-instruct           147
+       microsoft/Phi-3-mini-4k-instruct             147
+       microsoft/Phi-3-small-8k-instruct            147
+       microsoft/Phi-3.5-mini-instruct              147
+       microsoft/phi-2                              147
